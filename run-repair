@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <input.stp|input.step>" >&2
+    exit 2
+fi
+
+# Directory containing this wrapper script.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPAIR_SCRIPT="$SCRIPT_DIR/repair_step.py"
+
+if [[ ! -f "$REPAIR_SCRIPT" ]]; then
+    echo "ERROR: repair_step.py not found at:" >&2
+    echo "  $REPAIR_SCRIPT" >&2
+    exit 1
+fi
+
+# Resolve input filename, whether relative or absolute.
+INPUT="$(realpath -- "$1")"
+
+if [[ ! -f "$INPUT" ]]; then
+    echo "ERROR: input file does not exist:" >&2
+    echo "  $INPUT" >&2
+    exit 1
+fi
+
+DIR="$(dirname -- "$INPUT")"
+FILE="$(basename -- "$INPUT")"
+
+# Keep original extension and insert "_repaired" before it.
+if [[ "$FILE" == *.* ]]; then
+    STEM="${FILE%.*}"
+    EXT="${FILE##*.}"
+    OUTPUT="$DIR/${STEM}_repaired.${EXT}"
+else
+    OUTPUT="$DIR/${FILE}_repaired.stp"
+fi
+
+echo "Input:  $INPUT"
+echo "Output: $OUTPUT"
+echo
+
+flatpak run \
+    --env=REPAIR_SCRIPT="$REPAIR_SCRIPT" \
+    --env=REPAIR_INPUT="$INPUT" \
+    --env=REPAIR_OUTPUT="$OUTPUT" \
+    --command=FreeCADCmd \
+    org.freecad.FreeCAD <<'EOF'
+import os
+import sys
+
+script = os.environ["REPAIR_SCRIPT"]
+input_file = os.environ["REPAIR_INPUT"]
+output_file = os.environ["REPAIR_OUTPUT"]
+
+sys.argv = [
+    script,
+    input_file,
+    output_file,
+]
+
+exec(compile(open(script).read(), script, "exec"))
+EOF
