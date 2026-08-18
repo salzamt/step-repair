@@ -1,0 +1,26 @@
+# CAD source and generated geometry (add intentionally with git add -f)
+*.[sS][tT][pP]
+*.[sS][tT][eE][pP]
+*.[sS][tT][lL]
+
+# Python bytecode and tooling caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and editor files
+.venv/
+venv/
+env/
+.env
+.vscode/
+.idea/
+.DS_Store
+
+# Generated code-navigation index
+tags
