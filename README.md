@@ -10,9 +10,6 @@ file or one STL file per solid for multi-part printing workflows.
   Flatpak application
 - Bash, `realpath`, and `flatpak`
 
-The repository does not include CAD models. STEP and STL files are ignored by
-default because they are typically large generated or proprietary assets.
-
 ## Usage
 
 Make the launcher executable once after cloning:
@@ -46,7 +43,7 @@ together in Bambu Studio and choose the multi-part-object option when prompted.
    positive volume.
 5. For STEP output, round-trips the exported file and validates it again.
 
-The tool deliberately avoids boolean operations, fusing parts, and
+The tool avoids boolean operations, fusing parts, and
 `removeSplitter()` so it preserves individual parts where possible.
 
 ## Development
@@ -59,7 +56,7 @@ python3 -m py_compile repair_step.py
 ```
 
 `repair_step.py` imports FreeCAD modules, so exercising the repair logic
-requires running it through `run-repair` with FreeCAD installed.
+requires running it through `run-repair` with FreeCAD installed. Adopt the command when needed or not running Freecad via Flatpak.
 
 ## Contributing
 
