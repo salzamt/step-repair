@@ -1,23 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
+usage() {
+    echo "Usage:"
+    echo "  run-repair <input.stp|input.step>"
+    echo "  run-repair --stl <input.stp|input.step>"
+}
+
+
+STL_MODE=0
+
+if [[ "${1:-}" == "--stl" ]]; then
+    STL_MODE=1
+    shift
+fi
+
+
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 <input.stp|input.step>" >&2
+    usage >&2
     exit 2
 fi
 
-# Directory containing this wrapper script.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPAIR_SCRIPT="$SCRIPT_DIR/repair_step.py"
 
+
 if [[ ! -f "$REPAIR_SCRIPT" ]]; then
-    echo "ERROR: repair_step.py not found at:" >&2
+    echo "ERROR: repair_step.py not found:" >&2
     echo "  $REPAIR_SCRIPT" >&2
     exit 1
 fi
 
-# Resolve input filename, whether relative or absolute.
+
 INPUT="$(realpath -- "$1")"
+
 
 if [[ ! -f "$INPUT" ]]; then
     echo "ERROR: input file does not exist:" >&2
@@ -25,26 +43,44 @@ if [[ ! -f "$INPUT" ]]; then
     exit 1
 fi
 
+
 DIR="$(dirname -- "$INPUT")"
 FILE="$(basename -- "$INPUT")"
 
-# Keep original extension and insert "_repaired" before it.
+
 if [[ "$FILE" == *.* ]]; then
     STEM="${FILE%.*}"
     EXT="${FILE##*.}"
     OUTPUT="$DIR/${STEM}_repaired.${EXT}"
 else
+    STEM="$FILE"
     OUTPUT="$DIR/${FILE}_repaired.stp"
 fi
 
-echo "Input:  $INPUT"
-echo "Output: $OUTPUT"
+
+echo "Input: $INPUT"
+
+if [[ "$STL_MODE" -eq 1 ]]; then
+    echo "Mode:  STL multi-part"
+else
+    echo "Mode:  STEP"
+    echo "Output: $OUTPUT"
+fi
+
 echo
+
+
+export REPAIR_SCRIPT
+export REPAIR_INPUT="$INPUT"
+export REPAIR_OUTPUT="$OUTPUT"
+export REPAIR_STL_MODE="$STL_MODE"
+
 
 flatpak run \
     --env=REPAIR_SCRIPT="$REPAIR_SCRIPT" \
-    --env=REPAIR_INPUT="$INPUT" \
-    --env=REPAIR_OUTPUT="$OUTPUT" \
+    --env=REPAIR_INPUT="$REPAIR_INPUT" \
+    --env=REPAIR_OUTPUT="$REPAIR_OUTPUT" \
+    --env=REPAIR_STL_MODE="$REPAIR_STL_MODE" \
     --command=FreeCADCmd \
     org.freecad.FreeCAD <<'EOF'
 import os
@@ -53,12 +89,23 @@ import sys
 script = os.environ["REPAIR_SCRIPT"]
 input_file = os.environ["REPAIR_INPUT"]
 output_file = os.environ["REPAIR_OUTPUT"]
+stl_mode = os.environ["REPAIR_STL_MODE"] == "1"
 
-sys.argv = [
-    script,
+sys.argv = [script]
+
+if stl_mode:
+    sys.argv.append("--stl")
+
+sys.argv.extend([
     input_file,
     output_file,
-]
+])
 
-exec(compile(open(script).read(), script, "exec"))
+exec(
+    compile(
+        open(script).read(),
+        script,
+        "exec",
+    )
+)
 EOF
